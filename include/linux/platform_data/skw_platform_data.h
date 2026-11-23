@@ -36,8 +36,12 @@
 #define DEVICE_BLOCKED_EVENT	3
 #define DEVICE_DISCONNECT_EVENT 4
 #define DEVICE_DUMPMEM_EVENT 5
+#define DEVICE_SUSPEND_EVENT 6
+#define DEVICE_RESUME_EVENT 7
+#define DEVICE_BOOTUP_EVENT 8
 
 #define	SV6160_WIRELESS	"sv6160_wireless"
+#define	SV6621S_WIRELESS "sv6621s_wireless"
 #define SV6160_BTDRIVER	"sv6160_btdriver"
 #define SV6316_WIRELESS "sv6316_wireless"
 
@@ -78,6 +82,16 @@ struct skw_operation {
     int (*close) (int id);
     int (*read) (int id, char *buff, int len);
     int (*write) (int id, char *buff, int len);
+    /*
+     * actual :  buffer to save actual read /write data size;
+     * timeout : timeout unit ms.
+     * return value
+     * ret=0: transfer successfully, actual save the data size
+     * ret=-ETIMEDOUT, timer out
+     * otherwise error happened.
+     */
+    int (*read_tm) (int id, char *buff, int len, int *actual, int timeout);
+    int (*write_tm) (int id, char *buff, int len, int *actual, int timeout);
 };
 
 /*****************************************************************
@@ -201,6 +215,7 @@ struct sv6160_platform_data {
 	int  (*suspend_adma_cmd)(int id, struct scatterlist *sg, int nets, int size);
 	int (*suspend_sdma_cmd)(int id, char *buff, int len);
 	void (*dump_modem_memory)(char *buffer, int size, int *log_size);
+	int (*bluetooth_log_disable)(int disable);
 	/*
 	 * add edma channel mask for WIFI platform device.
 	 * value=0x7ff, means first 11 channels owned by WIFI.
