@@ -82,6 +82,31 @@ int btseekwave_send_hci_command(struct hci_dev *hdev, u16 opcode, int len, char 
 
 extern int skw_start_bt_service(void);
 extern int skw_stop_bt_service(void);
+
+/*
+ * The ea6x21qx platform exports these calls, the lite platform passes them in
+ * its platform data, so look them up at run time instead of importing them.
+ */
+static int btseekwave_legacy_service(bool start)
+{
+    int (*service)(void);
+    int ret;
+
+    if (start)
+        service = symbol_get(skw_start_bt_service);
+    else
+        service = symbol_get(skw_stop_bt_service);
+    if (!service)
+        return -ENODEV;
+
+    ret = service();
+    if (start)
+        symbol_put(skw_start_bt_service);
+    else
+        symbol_put(skw_stop_bt_service);
+    return ret;
+}
+
 struct btseekwave_data
 {
     struct hci_dev   *hdev;
@@ -481,7 +506,7 @@ static void btseekwave_port_close(struct btseekwave_data *data)
         else
         {
             SKWBT_INFO("func %s service_stop not exist, fallback to legacy\n", __func__);
-            skw_stop_bt_service();
+            btseekwave_legacy_service(false);
         }
 #else
         skw_stop_bt_service();
@@ -723,7 +748,7 @@ static int btseekwave_open(struct hci_dev *hdev)
         else
         {
             SKWBT_INFO("func %s service_start not exist, fallback to legacy\n", __func__);
-            err = skw_start_bt_service();
+            err = btseekwave_legacy_service(true);
         }
         if(err != 0)
         {
@@ -923,7 +948,7 @@ int btseekwave_plt_event_notifier(struct notifier_block *nb, unsigned long actio
             else
             {
                 SKWBT_INFO("func %s service_stop not exist, fallback to legacy\n", __func__);
-                skw_stop_bt_service();
+                btseekwave_legacy_service(false);
             }
 #else
             skw_stop_bt_service();
